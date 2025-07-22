@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, User, Mail, Phone, MapPin, Calendar, BookOpen, Award, Save } from 'lucide-react';
 import { Professor } from '../../types';
+import Select from 'react-select';
 
 interface AddProfessorFormProps {
   onClose: () => void;
@@ -9,6 +10,29 @@ interface AddProfessorFormProps {
 }
 
 const AddProfessorForm: React.FC<AddProfessorFormProps> = ({ onClose, onSave, editingProfessor }) => {
+// Example list of nationalities; replace or import as needed
+const [nationalities, setNationalities] = useState<string[]>([]);
+
+useEffect(() => {
+  fetch('https://restcountries.com/v3.1/all')
+    .then(res => res.json())
+    .then(data => {
+      // Utilise le nom du pays en français si disponible, sinon en anglais
+      const natList = data.map((country: any) =>
+        country.translations?.fra?.common || country.name.common
+      );
+      setNationalities(Array.from(new Set(natList)) as string[]);
+      
+    });
+}, []);
+
+const nationalityOptions = nationalities.map(nat => ({
+  value: nat,
+  label: nat
+}));
+
+  
+
   const [formData, setFormData] = useState({
     name: editingProfessor?.name || '',
     email: editingProfessor?.email || '',
@@ -220,21 +244,17 @@ const AddProfessorForm: React.FC<AddProfessorFormProps> = ({ onClose, onSave, ed
               </div>
 
               <div>
+                
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nationalité
-                </label>
-                <select
-                  name="nationality"
-                  value={formData.nationality}
-                  onChange={handleInputChange}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="Marocaine">Marocaine</option>
-                  <option value="Française">Française</option>
-                  <option value="Algérienne">Algérienne</option>
-                  <option value="Tunisienne">Tunisienne</option>
-                  <option value="Autre">Autre</option>
-                </select>
+  Nationalité
+</label>
+<Select
+  options={nationalityOptions}
+  value={nationalityOptions.find((opt: { value: string; label: string }) => opt.value === formData.nationality)}
+  onChange={option => handleInputChange({ target: { name: 'nationality', value: option?.value || '' } } as any)}
+  placeholder="Rechercher une nationalité..."
+  isClearable
+/>
               </div>
             </div>
 
