@@ -1,48 +1,36 @@
 import React, { useState } from 'react';
 import { Plus, Search, Edit, Trash2, Eye, Book } from 'lucide-react';
+import { professorsAPI } from '../../services/api';
 import { Professor } from '../../types';
 import ProfessorProfile from './ProfessorProfile';
 import AddProfessorForm from './AddProfessorForm';
 
 const ProfessorsPage: React.FC = () => {
-  const [professors, setProfessors] = useState<Professor[]>([
-    {
-      id: 1,
-      name: 'Dr. Hassan Alami',
-      email: 'hassan.alami@um6d.ma',
-      role: 'professor',
-      specialty: 'Cardiologie',
-      department: 'Médecine Interne',
-      courses: ['Cardiologie Clinique', 'Électrocardiographie'],
-      hireDate: '2018-09-01'
-    },
-    {
-      id: 2,
-      name: 'Prof. Fatima Zahra',
-      email: 'fatima.zahra@um6d.ma',
-      role: 'professor',
-      specialty: 'Pédiatrie',
-      department: 'Pédiatrie',
-      courses: ['Pédiatrie Générale', 'Néonatologie'],
-      hireDate: '2015-09-01'
-    },
-    {
-      id: 3,
-      name: 'Dr. Mohamed Tazi',
-      email: 'mohamed.tazi@um6d.ma',
-      role: 'professor',
-      specialty: 'Chirurgie',
-      department: 'Chirurgie',
-      courses: ['Chirurgie Générale', 'Techniques Chirurgicales'],
-      hireDate: '2020-09-01'
-    }
-  ]);
+  const [professors, setProfessors] = useState<Professor[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProfessor, setEditingProfessor] = useState<Professor | null>(null);
   const [selectedProfessor, setSelectedProfessor] = useState<Professor | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+
+  // Load professors on component mount
+  React.useEffect(() => {
+    loadProfessors();
+  }, []);
+
+  const loadProfessors = async () => {
+    try {
+      setLoading(true);
+      const response = await professorsAPI.getAll();
+      setProfessors(response.data);
+    } catch (error) {
+      console.error('Error loading professors:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredProfessors = professors.filter(professor => 
     professor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -61,7 +49,17 @@ const ProfessorsPage: React.FC = () => {
 
   const handleDeleteProfessor = (id: number) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer ce professeur ?')) {
+      deleteProfessor(id);
+    }
+  };
+
+  const deleteProfessor = async (id: number) => {
+    try {
+      await professorsAPI.delete(id);
       setProfessors(professors.filter(p => p.id !== id));
+    } catch (error) {
+      console.error('Error deleting professor:', error);
+      alert('Erreur lors de la suppression du professeur');
     }
   };
 
@@ -71,21 +69,33 @@ const ProfessorsPage: React.FC = () => {
 
   const handleSaveProfessor = (professorData: Omit<Professor, 'id'>) => {
     if (editingProfessor) {
-      // Update existing professor
-      setProfessors(professors.map(p => 
-        p.id === editingProfessor.id 
-          ? { ...professorData, id: editingProfessor.id }
-          : p
-      ));
+      updateProfessor(editingProfessor.id, professorData);
     } else {
-      // Add new professor
-      const newProfessor: Professor = {
-        ...professorData,
-        id: Math.max(...professors.map(p => p.id)) + 1
-      };
-      setProfessors([...professors, newProfessor]);
+      createProfessor(professorData);
     }
     setEditingProfessor(null);
+  };
+
+  const createProfessor = async (professorData: Omit<Professor, 'id'>) => {
+    try {
+      const response = await professorsAPI.create(professorData);
+      setProfessors([...professors, response.data]);
+    } catch (error) {
+      console.error('Error creating professor:', error);
+      alert('Erreur lors de la création du professeur');
+    }
+  };
+
+  const updateProfessor = async (id: number, professorData: Omit<Professor, 'id'>) => {
+    try {
+      const response = await professorsAPI.update(id, professorData);
+      setProfessors(professors.map(p => 
+        p.id === id ? response.data : p
+      ));
+    } catch (error) {
+      console.error('Error updating professor:', error);
+      alert('Erreur lors de la mise à jour du professeur');
+    }
   };
 
   const getDepartmentColor = (department: string) => {
@@ -97,6 +107,14 @@ const ProfessorsPage: React.FC = () => {
     };
     return colors[department as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">

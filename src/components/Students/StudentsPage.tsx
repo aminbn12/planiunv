@@ -1,45 +1,13 @@
 import React, { useState } from 'react';
 import { Plus, Search, Filter, Edit, Trash2, Eye } from 'lucide-react';
+import { studentsAPI } from '../../services/api';
 import { Student } from '../../types';
 import StudentProfile from './StudentProfile';
 import AddStudentForm from './AddStudentForm';
 
 const StudentsPage: React.FC = () => {
-  const [students, setStudents] = useState<Student[]>([
-    {
-      id: 1,
-      name: 'Marie Dupont',
-      email: 'marie.dupont@um6d.ma',
-      role: 'student',
-      year: '3ème année',
-      average: 15.2,
-      status: 'active',
-      phone: '0612345678',
-      enrollmentDate: '2021-09-15'
-    },
-    {
-      id: 2,
-      name: 'Ahmed Ben Ali',
-      email: 'ahmed.benali@um6d.ma',
-      role: 'student',
-      year: '4ème année',
-      average: 14.8,
-      status: 'active',
-      phone: '0623456789',
-      enrollmentDate: '2020-09-15'
-    },
-    {
-      id: 3,
-      name: 'Sarah Martin',
-      email: 'sarah.martin@um6d.ma',
-      role: 'student',
-      year: '2ème année',
-      average: 16.1,
-      status: 'active',
-      phone: '0634567890',
-      enrollmentDate: '2022-09-15'
-    }
-  ]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterYear, setFilterYear] = useState('');
@@ -47,6 +15,23 @@ const StudentsPage: React.FC = () => {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+
+  // Load students on component mount
+  React.useEffect(() => {
+    loadStudents();
+  }, []);
+
+  const loadStudents = async () => {
+    try {
+      setLoading(true);
+      const response = await studentsAPI.getAll();
+      setStudents(response.data);
+    } catch (error) {
+      console.error('Error loading students:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredStudents = students.filter(student => {
     const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -66,7 +51,17 @@ const StudentsPage: React.FC = () => {
 
   const handleDeleteStudent = (id: number) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cet étudiant ?')) {
+      deleteStudent(id);
+    }
+  };
+
+  const deleteStudent = async (id: number) => {
+    try {
+      await studentsAPI.delete(id);
       setStudents(students.filter(s => s.id !== id));
+    } catch (error) {
+      console.error('Error deleting student:', error);
+      alert('Erreur lors de la suppression de l\'étudiant');
     }
   };
 
@@ -76,21 +71,33 @@ const StudentsPage: React.FC = () => {
 
   const handleSaveStudent = (studentData: Omit<Student, 'id'>) => {
     if (editingStudent) {
-      // Update existing student
-      setStudents(students.map(s => 
-        s.id === editingStudent.id 
-          ? { ...studentData, id: editingStudent.id }
-          : s
-      ));
+      updateStudent(editingStudent.id, studentData);
     } else {
-      // Add new student
-      const newStudent: Student = {
-        ...studentData,
-        id: Math.max(...students.map(s => s.id)) + 1
-      };
-      setStudents([...students, newStudent]);
+      createStudent(studentData);
     }
     setEditingStudent(null);
+  };
+
+  const createStudent = async (studentData: Omit<Student, 'id'>) => {
+    try {
+      const response = await studentsAPI.create(studentData);
+      setStudents([...students, response.data]);
+    } catch (error) {
+      console.error('Error creating student:', error);
+      alert('Erreur lors de la création de l\'étudiant');
+    }
+  };
+
+  const updateStudent = async (id: number, studentData: Omit<Student, 'id'>) => {
+    try {
+      const response = await studentsAPI.update(id, studentData);
+      setStudents(students.map(s => 
+        s.id === id ? response.data : s
+      ));
+    } catch (error) {
+      console.error('Error updating student:', error);
+      alert('Erreur lors de la mise à jour de l\'étudiant');
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -114,6 +121,14 @@ const StudentsPage: React.FC = () => {
     if (average >= 12) return 'text-yellow-600';
     return 'text-red-600';
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">

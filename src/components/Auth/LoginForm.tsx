@@ -99,34 +99,6 @@ const LoginForm: React.FC = () => {
             </button>
           </form>
 
-          <div className="mt-8 border-t pt-6">
-            <p className="text-sm text-gray-600 text-center mb-4">
-              Connexion rapide pour démo :
-            </p>
-            <div className="space-y-2">
-              <button
-                onClick={() => quickLogin('admin')}
-                className="w-full flex items-center justify-center space-x-2 py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <User className="w-4 h-4" />
-                <span>Administrateur</span>
-              </button>
-              <button
-                onClick={() => quickLogin('professor')}
-                className="w-full flex items-center justify-center space-x-2 py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <User className="w-4 h-4" />
-                <span>Professeur</span>
-              </button>
-              <button
-                onClick={() => quickLogin('student')}
-                className="w-full flex items-center justify-center space-x-2 py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <User className="w-4 h-4" />
-                <span>Étudiant</span>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>
