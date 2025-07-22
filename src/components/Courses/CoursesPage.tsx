@@ -1,81 +1,12 @@
 import React, { useState } from 'react';
 import { Plus, Calendar, Clock, MapPin, Users, Filter, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react';
+import { coursesAPI } from '../../services/api';
 import { Course } from '../../types';
 import AddCourseForm from './AddCourseForm';
 
 const CoursesPage: React.FC = () => {
-  const [courses, setCourses] = useState<Course[]>([
-    {
-      id: 1,
-      name: 'Cardiologie Clinique',
-      professor: 'Dr. Hassan Alami',
-      professorId: 1,
-      year: '4ème année',
-      day: 'Lundi',
-      time: '09:00',
-      duration: 120,
-      room: 'Amphi A',
-      maxStudents: 80,
-      enrolledStudents: 75,
-      date: '2024-01-15' // Lundi 15 janvier 2024
-    },
-    {
-      id: 2,
-      name: 'Pédiatrie Générale',
-      professor: 'Prof. Fatima Zahra',
-      professorId: 2,
-      year: '3ème année',
-      day: 'Mardi',
-      time: '14:00',
-      duration: 90,
-      room: 'Salle 201',
-      maxStudents: 50,
-      enrolledStudents: 48,
-      date: '2024-01-16' // Mardi 16 janvier 2024
-    },
-    {
-      id: 3,
-      name: 'Chirurgie Générale',
-      professor: 'Dr. Mohamed Tazi',
-      professorId: 3,
-      year: '5ème année',
-      day: 'Mercredi',
-      time: '10:00',
-      duration: 150,
-      room: 'Bloc Opératoire',
-      maxStudents: 25,
-      enrolledStudents: 22,
-      date: '2024-01-17' // Mercredi 17 janvier 2024
-    },
-    {
-      id: 4,
-      name: 'Neurologie',
-      professor: 'Dr. Aicha Benali',
-      professorId: 4,
-      year: '4ème année',
-      day: 'Jeudi',
-      time: '15:00',
-      duration: 90,
-      room: 'Salle 305',
-      maxStudents: 40,
-      enrolledStudents: 35,
-      date: '2024-01-18' // Jeudi 18 janvier 2024
-    },
-    {
-      id: 5,
-      name: 'Psychiatrie',
-      professor: 'Prof. Omar Idrissi',
-      professorId: 5,
-      year: '3ème année',
-      day: 'Vendredi',
-      time: '11:00',
-      duration: 120,
-      room: 'Salle 102',
-      maxStudents: 30,
-      enrolledStudents: 28,
-      date: '2024-01-19' // Vendredi 19 janvier 2024
-    }
-  ]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month' | 'year'>('week');
@@ -84,6 +15,23 @@ const CoursesPage: React.FC = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{ day: string; time: string; date?: string } | null>(null);
+
+  // Load courses on component mount
+  React.useEffect(() => {
+    loadCourses();
+  }, []);
+
+  const loadCourses = async () => {
+    try {
+      setLoading(true);
+      const response = await coursesAPI.getAll();
+      setCourses(response.data);
+    } catch (error) {
+      console.error('Error loading courses:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const weekDays = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
   const timeSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
@@ -270,28 +218,50 @@ const CoursesPage: React.FC = () => {
 
   const handleDeleteCourse = (id: number) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer ce cours ?')) {
+      deleteCourse(id);
+    }
+  };
+
+  const deleteCourse = async (id: number) => {
+    try {
+      await coursesAPI.delete(id);
       setCourses(courses.filter(c => c.id !== id));
+    } catch (error) {
+      console.error('Error deleting course:', error);
+      alert('Erreur lors de la suppression du cours');
     }
   };
 
   const handleSaveCourse = (courseData: Omit<Course, 'id'>) => {
     if (editingCourse) {
-      // Update existing course
-      setCourses(courses.map(c => 
-        c.id === editingCourse.id 
-          ? { ...courseData, id: editingCourse.id }
-          : c
-      ));
+      updateCourse(editingCourse.id, courseData);
     } else {
-      // Add new course
-      const newCourse: Course = {
-        ...courseData,
-        id: Math.max(...courses.map(c => c.id)) + 1
-      };
-      setCourses([...courses, newCourse]);
+      createCourse(courseData);
     }
     setEditingCourse(null);
     setSelectedTimeSlot(null);
+  };
+
+  const createCourse = async (courseData: Omit<Course, 'id'>) => {
+    try {
+      const response = await coursesAPI.create(courseData);
+      setCourses([...courses, response.data]);
+    } catch (error) {
+      console.error('Error creating course:', error);
+      alert('Erreur lors de la création du cours');
+    }
+  };
+
+  const updateCourse = async (id: number, courseData: Omit<Course, 'id'>) => {
+    try {
+      const response = await coursesAPI.update(id, courseData);
+      setCourses(courses.map(c => 
+        c.id === id ? response.data : c
+      ));
+    } catch (error) {
+      console.error('Error updating course:', error);
+      alert('Erreur lors de la mise à jour du cours');
+    }
   };
 
   const navigateDate = (direction: 'prev' | 'next') => {
@@ -625,6 +595,14 @@ const CoursesPage: React.FC = () => {
       </div>
     );
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
